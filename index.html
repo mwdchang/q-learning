@@ -1,5 +1,10 @@
+<!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8"></meta>
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+<meta name="description" content="Q-Learning navigation solver"/>
+
 <title>Q-Learning</title>
 <script src="qlearn.js"></script>
 <!--
@@ -15,29 +20,36 @@
 <section>
   <h1>Q-Learning</h1>
   <p>
-  Using Q-Learning to solve a navigation problem. The simulation runs for 800 iterations.
+  Using Q-Learning to solve a navigation problem. The learning process will runs for 500 iterations. 
   <ul>
     <li> Smaller green square is the starting point; Goal is indicated by the circle marker</li> 
-    <li> Black tiles are inaccessible pits, while grey ones are regular tiles </li>
+    <li> Dark tiles are inaccessible pits, while light ones are regular tiles </li>
   </ul>
   </p>
   <p>
-    <div> Iterations #<span id="e-counter"></span>
+    <span onClick="togglePath()"><input id="show-path" type="checkbox" style="pointer-events:none"></input>Accumulate paths</span>
   </p>
-  <svg id="maze" style="width:380px; height:380px">
-  </svg>
+  <div class="row" style="width: 400px; align-items: center; justify-content: space-between">
+    <div> Iterations #<span id="e-counter"></span></div>
+    <span class="button" onClick="reset()">Reset</span>
+  </div>
+  <svg id="maze"></svg>
+  <br>
 </section>
 </body>
 <script>
 let ql = new QLearnMaze();
 
 
-let svg = d3.select('#maze').append('g');
-const w = 380
-const h = 380;
+const w = 400;
+const h = 400;
+const interval = 40;
+let svg = d3.select('#maze').style('width', w+'px').style('height', h+'px').append('g');
 const cellW = w / ql.w;
 const cellH = w / ql.h;
 
+let handle = null;
+let showPath = false;
 
 drawMap();
 next(0);
@@ -49,40 +61,59 @@ function next(n) {
     let res = ql.simulate();
     let p = ql.toPath(ql.simulate());
     drawPath(p);
-    // console.log(JSON.stringify(p));
     d3.select('#e-counter').text(n);
   }
-  if (n % 800 === 0) {
+  if (n % 500 === 0) {
     return;
   }
-  setTimeout(function() {
+  handle = setTimeout(function() {
     next(n);
-  }, 25);
+  }, interval);
+}
+
+function reset() {
+  if (handle && handle !== null) {
+    clearTimeout(handle);
+    ql.resetQTable();
+    svg.selectAll('.q-path').remove();
+    next(0);
+  }
+}
+
+function togglePath() {
+  let node = d3.select('#show-path').node();
+  node.checked = !node.checked;
+  showPath = node.checked;
 }
 
 
 function drawPath(path) {
-  // svg.selectAll('.q-path').remove();
+  if (showPath === false) {
+    svg.selectAll('.q-path').remove();
+  }
+
+  let opacity = showPath === true? 0.05 : 0.5;
+
   let len = path.length - 1;
   let lineFn = d3.line()
-     .x( d => d.x * cellW + 0.5*cellW)
-     .y( d => d.y * cellH + 0.5*cellH);
+     .x( d => d.x * cellW + 0.5*cellW + Math.random()*5)
+     .y( d => d.y * cellH + 0.5*cellH + Math.random()*5);
 
   svg.append('path')
     .classed('q-path', true)
     .attr('d', lineFn(path))
-    .style('stroke', '#369')
-    .style('stroke-width', 6)
+    .style('stroke', '#f80')
+    .style('stroke-width', 5)
     .style('fill', 'none')
-    .style('stroke-opacity', 0.06);
+    .style('stroke-opacity', opacity);
   
   svg.append('circle')
     .classed('q-path', true)
     .attr('cx', path[len].x*cellW + 0.5*cellW)
     .attr('cy', path[len].y*cellH + 0.5*cellH)
     .attr('r', 10)
-    .style('fill', '#369')
-    .style('fill-opacity', 0.06);
+    .style('fill', '#f80')
+    .style('fill-opacity', opacity);
 
 }
 
@@ -93,14 +124,14 @@ function drawMap() {
       let px = x*cellW;
       let py = y*cellH;
       let idx = (y*ql.w + x);
-      let c = '#aaa';
-      if (ql.world[idx] === 2) c = '#333';
+      let c = '#DDD';
+      if (ql.world[idx] === 2) c = '#777';
       svg.append('rect')
         .attr('x', px)
         .attr('y', py)
         .attr('width', cellW)
         .attr('height', cellH)
-        .style('stroke', '#acc')
+        .style('stroke', '#777')
         .style('fill', c);
   
       if (ql.world[idx] === 9) {
@@ -113,13 +144,13 @@ function drawMap() {
           .style('fill', '#ccc');
       }
       if (ql.world[idx] === 0) {
-        svg.append('rect')
-          .attr('x', px + cellW*0.2)
-          .attr('y', py + cellH*0.2)
-          .attr('width', cellW-cellW*0.4)
-          .attr('height', cellH-cellH*0.4)
-          .style('stroke', '#acc')
-          .style('fill', '#5d5');
+        svg.append('circle')
+          .attr('cx', px + 0.5*cellW)
+          .attr('cy', py + 0.5*cellH)
+          .attr('r', cellH*0.3)
+          .style('stroke', '#5d5')
+          .style('stroke-width', 6)
+          .style('fill', '#ccc');
 
         }
     }
